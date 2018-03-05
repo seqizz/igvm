@@ -39,6 +39,7 @@ from igvm.transaction import Transaction
 from igvm.utils.backoff import retry_wait_backoff
 from igvm.utils.network import get_network_config
 from igvm.utils.virtutils import get_virtconn
+from fabric.api import settings
 
 log = logging.getLogger(__name__)
 
@@ -673,8 +674,13 @@ class Hypervisor(Host):
                 'Listening netcat already found on destination hypervisor.'
             )
 
-    def kill_netcat(self, port):
-        self.run('pkill -f "^/bin/nc.traditional -l -p {}"'.format(port))
+    def kill_netcat_to_device(self, port):
+        # Warn only because if netcat is already dead, kill will fail.
+        with settings(warn_only=True):
+            self.run(
+                'pkill -f "^/bin/nc.traditional -l -p {}"'.format(port)
+                .format(self.fqdn),
+            )
 
     def netcat_to_device(self, device, transaction=None):
         dev_minor = self.run('stat -L -c "%T" {}'.format(device), silent=True)
@@ -688,8 +694,12 @@ class Hypervisor(Host):
             'nohup /bin/nc.traditional -l -p {0} | dd of={1} obs=1048576 &'
             .format(port, device)
         )
+
         if transaction:
-            transaction.on_rollback('kill netcat', self.kill_netcat, port)
+            transaction.on_rollback(
+                'Kill listening netcat', self.kill_netcat_to_device, port
+            )
+
         return self.fqdn, port
 
     def device_to_netcat(self, device, size, listener, transaction=None):
