@@ -30,10 +30,7 @@ class Host(object):
 
     def __init__(self, dataset_obj):
         self.dataset_obj = dataset_obj
-        if dataset_obj['hostname'].endswith('.ig.local'):
-            self.fqdn = dataset_obj['hostname']
-        else:
-            self.fqdn = dataset_obj['hostname'] + '.ig.local'
+        self.fqdn = self.dataset_obj['hostname']    # TODO: Remove
 
     def __str__(self):
         return self.fqdn
@@ -111,11 +108,13 @@ class Host(object):
         """Same as Fabric's put but with working sudo permissions
 
         Setting permissions on files and using sudo via Fabric's put() seems
-        broken, at least for mounted VM. This is why we run extra commands here.
+        broken, at least for mounted VM. This is why we run extra commands
+        here.
         """
         with self.fabric_settings():
             tempfile = '/tmp/' + str(uuid4())
             fabric.api.put(local_path, tempfile)
-            self.run('mv {0} {1} ; chmod {2} {1}'.format(
-                tempfile, remote_path, mode
-            ))
+            self.run(
+                'mv {0} {1} ; chmod {2} {1}'
+                .format(tempfile, remote_path, mode)
+            )
