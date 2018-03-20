@@ -13,9 +13,6 @@ except ImportError:
 
 from libvirt import VIR_DOMAIN_SHUTOFF
 
-from adminapi.dataset import Query
-from adminapi.filters import Any, Empty, Not
-
 from igvm.exceptions import (
     ConfigError,
     HypervisorError,
@@ -42,7 +39,6 @@ from igvm.settings import (
 )
 from igvm.transaction import Transaction
 from igvm.utils.backoff import retry_wait_backoff
-from igvm.utils.network import get_network_config
 from igvm.utils.virtutils import get_virtconn
 
 log = logging.getLogger(__name__)
@@ -77,29 +73,16 @@ class Hypervisor(Host):
             )
         return self._mount_path[vm]
 
-    def vlan_for_vm(self, vm):
-        """Returns the VLAN number a VM should use on this hypervisor.
-        None for untagged."""
-        vlans = [v['vlan_tag'] for v in Query({
-            'hostname': Any(*self.dataset_obj['vlan_networks']),
-            'vlan_tag': Not(Empty()),
-        }, ['vlan_tag'])]
+    def get_vlan_network(self, ip_addr):
+        """Find the network for the VM
 
-        vm_vlan = get_network_config(vm.dataset_obj)['vlan_tag']
-
-        # On source hypervisor, it is unnecessary to perform this check.
-        # The VLAN is obviously there, even if not on Serveradmin.  This can
-        # happen if VLAN is removed on Serveradmin so that nobody creates
-        # new VMs on given hypervisor, but the existing ones must be moved out.
-        if (
-            vm.dataset_obj['xen_host'] != self.dataset_obj['hostname'] and
-            vm_vlan not in vlans
-        ):
-            raise HypervisorError(
-                'Hypervisor "{}" does not support VLAN {}.'
-                .format(self.fqdn, vm_vlan)
-            )
-        return vm_vlan
+        We could not get the "route_network" of the VM because it might have
+        its IP address changed.
+        """
+        for vlan_network in self.dataset_obj['vlan_networks']:
+            if ip_addr in vlan_network['intern_ip']:
+                return vlan_network
+        return None
 
     def vm_max_memory(self, vm):
         """Calculates the max amount of memory in MiB the VM may receive."""
@@ -158,7 +141,11 @@ class Hypervisor(Host):
         # TODO: CPU model
 
         # Proper VLAN?
-        self.vlan_for_vm(vm)
+        if not self.get_vlan_network(vm.dataset_obj['intern_ip']):
+            raise HypervisorError(
+                'Hypervisor "{}" does not support route_network "{}".'
+                .format(self.fqdn, vm.dataset_obj['route_network'])
+            )
 
     def define_vm(self, vm, transaction=None):
         """Creates a VM on the hypervisor."""
