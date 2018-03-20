@@ -451,13 +451,6 @@ class Hypervisor(Host):
                 .format(self.fqdn)
             )
 
-        # Online migration only works with the same VLAN
-        if not offline and self.vlan_for_vm(vm) != hypervisor.vlan_for_vm(vm):
-            raise HypervisorError(
-                'Online migration is not possible with the current network '
-                'configuration (different VLAN).'
-            )
-
     def migrate_vm(
         self, vm, target_hypervisor, offline, offline_transport, transaction,
     ):
