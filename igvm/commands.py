@@ -226,7 +226,7 @@ def change_address(vm_hostname, new_address, offline=False):
 
 @with_fabric_settings
 def vm_build(vm_hostname, run_puppet=True, debug_puppet=False, postboot=None,
-             allow_reserved_hv=False, rebuild=False):
+             allow_reserved_hv=False, rebuild=False, restore=False):
     """Create a VM and start it
 
     Puppet in run once to configure baseline networking.
@@ -252,6 +252,9 @@ def vm_build(vm_hostname, run_puppet=True, debug_puppet=False, postboot=None,
                 '"{}" is still running.'.format(vm.fqdn)
             )
 
+        if restore and (run_puppet or debug_puppet):
+            raise IGVMError('Restore operation can not run puppet.')
+
         if rebuild and vm.hypervisor.vm_defined(vm):
             vm.hypervisor.undefine_vm(vm)
 
@@ -259,6 +262,7 @@ def vm_build(vm_hostname, run_puppet=True, debug_puppet=False, postboot=None,
             run_puppet=run_puppet,
             debug_puppet=debug_puppet,
             postboot=postboot,
+            restore=restore,
         )
 
         vm.dataset_obj.commit()

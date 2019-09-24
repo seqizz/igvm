@@ -287,7 +287,8 @@ class VM(Host):
             result['status'] = 'new'
         return result
 
-    def build(self, run_puppet=True, debug_puppet=False, postboot=None):
+    def build(self, run_puppet=True, debug_puppet=False, postboot=None,
+              restore=False):
         """Builds a VM."""
         hypervisor = self.hypervisor
         self.check_serveradmin_config()
@@ -307,6 +308,12 @@ class VM(Host):
             # Perform operations on the hypervisor
             self.hypervisor.create_vm_storage(self, transaction)
             mount_path = self.hypervisor.format_vm_storage(self, transaction)
+
+            if restore:
+                self.hypervisor.restore_vm(self.fqdn, mount_path)
+                self.start()
+                log.info('"{}" is restored and started.'.format(self.fqdn))
+                return
 
             self.hypervisor.download_and_extract_image(image, mount_path)
 

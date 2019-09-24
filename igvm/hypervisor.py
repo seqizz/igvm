@@ -444,6 +444,9 @@ class Hypervisor(Host):
             )
         )
 
+    def restore_vm(self, fqdn, target_dir):
+        pass
+
     def mount_vm_storage(self, vm, transaction=None):
         """Mount VM filesystem on host and return mount point."""
         if vm in self._mount_path:
