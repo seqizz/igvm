@@ -61,7 +61,7 @@ def ping_port(ip, port=22, timeout=1):
         s.close()
 
 
-def wait_until(ip, port=22, timeout=60, waitmsg=None):
+def wait_until(ip, port=22, timeout=600, waitmsg=None):
     if waitmsg:
         log.info(waitmsg)
 
